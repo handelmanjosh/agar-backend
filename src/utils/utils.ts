@@ -20,8 +20,6 @@ export function CheckRadialCollision(c1: Collideable, c2: Collideable, onCollisi
     const distance = locateable_distance(c1, c2);
     if (distance < c1.radius || distance < c2.radius) {
         onCollision();
-    } else {
-        onCollision();
     }
 }
 //checks if c1 covered c2
@@ -41,6 +39,8 @@ export function CheckCover(c1: Collideable, c2: Collideable, onCover: () => any)
 const genCoordsInRange = (range: [number, number]) => [Math.random() * range[0], Math.random() * range[1]];
 export function SpawnAway(locateables: Collideable[], radius: number, range: [number, number]) {
     let [x, y] = genCoordsInRange(range);
+    if (!locateables || locateables.length == 0) return [x, y];
+    let times = 0;
     while (true) {
         let failed = false;
         for (const locateable of locateables) {
@@ -55,6 +55,18 @@ export function SpawnAway(locateables: Collideable[], radius: number, range: [nu
         if (!failed) {
             break;
         }
+        times++;
+        if (times > 50) {
+            console.error("Could not find valid area");
+            break;
+        }
     }
     return [x, y];
 }
+export const randomBetween = (a: number, b: number) => {
+    return a + Math.random() * (b - a);
+};
+const colors = ["red", "blue", "green", "gray", "orange", "pink", "black"];
+export const getRandomColor = (): string => {
+    return colors[Math.floor(Math.random() * colors.length)];
+};
