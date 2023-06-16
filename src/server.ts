@@ -18,7 +18,7 @@ const io = new Server(httpServer, {
         methods: ["GET", "POST", "DELETE", "UPDATE"]
     }
 });
-const port = 3005;
+const port = process.env.ENVIRONMENT === "development" ? 3005 : (Number(process.env.PORT) || 3000);
 
 async function main() {
     const games: Map<string, GameController> = new Map<string, GameController>();
@@ -247,7 +247,7 @@ main();
 //         res.status(500).json({ message: "Error" });
 //     }
 // });
-httpServer.listen(port, () => {
+httpServer.listen(port, `0.0.0.0`, () => {
     console.log(`Server listening on port ${port}`);
 })
 
