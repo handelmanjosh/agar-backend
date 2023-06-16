@@ -4,10 +4,13 @@ import { Server, Socket } from 'socket.io';
 import cors from 'cors';
 import GameController from './utils/GameController';
 import { Player, SuperPlayer } from './utils/Player';
-
+import fs from 'fs';
+import path from 'path';
+import { SpawnAway } from './utils/utils';
 
 const app = express();
 app.use(cors());
+app.use(express.json());
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
     //todo: lock down origin
@@ -85,14 +88,18 @@ async function main() {
                 player.usePowerUp(data.powerUp);
             }
         });
-        socket.on("spawn", () => {
+        socket.on("spawn", (powerUps: [string, number][]) => {
             let game = games.get(gameId);
-            const player = new SuperPlayer(0, 0, vMax, socket.id,
+            const [x, y] = SpawnAway(game?.allSubPlayers() || [], 10, [10000, 10000]);
+            const player = new SuperPlayer(x, y, vMax, socket.id,
                 (name: string) => socket.emit("collectPowerUp", name),
                 //use 3.14 for simplicity
                 (n: number) => socket.emit("massIncrease", n ** 2 * 3.14),
                 () => socket,
             );
+            for (const powerUp of powerUps) {
+                player.addPowerUps(powerUp);
+            }
             if (game) {
                 game.addPlayer(player);
             } else {
@@ -128,10 +135,44 @@ async function main() {
                 }
             }
         });
+        socket.on("loadPowerUp", (powerUp: string) => {
+            console.log(powerUp);
+            const game = games.get(gameId);
+            const player = game?.Players.find(player => player.id == socket.id);
+            if (player) {
+                player.addPowerUps([powerUp, 1]);
+            }
+        });
+        socket.on("getNFts", () => {
+            const data = require("./nft.json");
+            socket.emit("receiveNfts", data.nfts);
+        });
     });
 }
+
 main();
 
+// app.post("/nft", (req, res) => {
+//     try {
+//         console.log(req.body);
+//         const { nft_address } = req.body;
+//         const data = require("./nft.json");
+//         console.log(data);
+//         console.log(data.nfts);
+//         data.nfts.push({ address: nft_address, image: "" });
+//         console.log(data);
+//         fs.writeFile(path.join(__dirname, 'nft.json'), JSON.stringify(data, null, 2), (err) => {
+//             if (err) {
+//                 res.status(500).json({ message: "Error" });
+//             } else {
+//                 res.status(200).json({ message: "Success" });
+//             }
+//         });
+//     } catch (e) {
+//         console.error(e);
+//         res.status(500).json({ message: "Error" });
+//     }
+// });
 httpServer.listen(port, () => {
     console.log(`Server listening on port ${port}`);
 })

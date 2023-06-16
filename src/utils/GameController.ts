@@ -80,6 +80,8 @@ export default class GameController {
             if (player.delete) {
                 this.Players.splice(i, 1);
                 player.kill();
+            } else if (player.players.length === 0) {
+                player.delete = true;
             } else {
                 player.move();
             }
@@ -191,7 +193,15 @@ export default class GameController {
             });
             playerRadius.push([player.id, total]);
         });
-        return playerRadius.sort((a: [string, number], b: [string, number]) => b[1] - a[1]);
+        const sorted = playerRadius.sort((a: [string, number], b: [string, number]) => b[1] - a[1]);
+        const rewards = [.05, .03, .02, .01, .005];
+        for (let i = 0; i < 5 && i < sorted.length; i++) {
+            const p = this.Players.find(player => player.id === sorted[i][0]);
+            if (p) {
+                p.trophies += rewards[i];
+            }
+        }
+        return sorted;
     }
     getMessages() {
 

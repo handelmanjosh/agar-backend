@@ -13,6 +13,7 @@ export class SuperPlayer {
     vy: number;
     vMaxDelta: number;
     color: string;
+    trophies: number;
     inventory: Map<string, PowerUp[]>;
     onCollect: (name: string) => any;
     sendEat: (n: number) => any;
@@ -34,11 +35,13 @@ export class SuperPlayer {
         const player = new Player(x, y, vMax, id, this.color, this);
         this.players.push(player);
         this.canSplit = true;
+        this.trophies = 0;
         this.onCollect = onCollect;
         this.sendEat = sendEat;
         this.kill = () => {
             console.log(`Total radius: ${this.getTotalRadius()}`);
-            getSocket().emit("dead", this.getTotalRadius());
+            console.log(getSocket().id);
+            getSocket().emit("dead", { mass: this.getTotalRadius(), powerUps: this.serializeInventory(), trophies: Math.round(this.trophies) });
         };
     }
     getTotalRadius() {
@@ -101,7 +104,9 @@ export class SuperPlayer {
         // this.setAngle(x, y, width, height);
         let xDiff = x - playerPos[0];
         let yDiff = y - playerPos[1];
-        const { radius } = this.players.reduce((prev, current) => (prev.radius > current.radius) ? prev : current);
+
+        const { radius } = this.players.length > 0 ? this.players.reduce((prev, current) => (prev.radius > current.radius) ? prev : current) : { radius: 10 };
+
         let maxDiff = radius * 3;
 
         let rx = xDiff / maxDiff;
@@ -111,7 +116,7 @@ export class SuperPlayer {
         if (rx < -1) rx = -1;
         if (ry > 1) ry = 1;
         if (ry < -1) ry = -1;
-        let { vMax } = this.players.reduce((prev, current) => (prev.vMax > current.vMax) ? current : prev);
+        let { vMax } = this.players.length > 0 ? this.players.reduce((prev, current) => (prev.vMax > current.vMax) ? current : prev) : { vMax: 10 };
         vMax += this.vMaxDelta;
         this.vx = vMax * rx;
         this.vy = vMax * ry;
@@ -191,7 +196,7 @@ export class AIPlayer extends Player {
     target: [number, number] | undefined;
     constructor(x: number, y: number) {
         //@ts-ignore
-        super(x, y, 10, undefined, undefined);
+        super(x, y, 10, undefined, getRandomColor(), undefined);
     }
     move() {
         if (this.target) {

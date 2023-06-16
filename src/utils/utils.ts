@@ -66,7 +66,7 @@ export function SpawnAway(locateables: Collideable[], radius: number, range: [nu
 export const randomBetween = (a: number, b: number) => {
     return a + Math.random() * (b - a);
 };
-const colors = ["red", "blue", "green", "gray", "orange", "pink", "black"];
+const colors = ["red", "blue", "green", "purple", "orange", "pink", "white", "cyan", "yellow", "brown"];
 export const getRandomColor = (): string => {
     return colors[Math.floor(Math.random() * colors.length)];
 };

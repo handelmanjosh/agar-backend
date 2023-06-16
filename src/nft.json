@@ -1,0 +1,24 @@
+{
+  "nfts": [
+    {
+      "address": "HQfhhshaSvE1wBvWqEXaNEewCEcF3mLAbo19sEq1Ug9A",
+      "image": "canada.png"
+    },
+    {
+      "address": "YKmbpTwTjzai1GH91SgxzRuTNV9mowkeVM1cymBM9Nj",
+      "image": "china.jpg"
+    },
+    {
+      "address": "8pZDopNiYaS7UTzVigAHR9sVbSHV3D43MHn89bMgk9Ki",
+      "image": "sg.png"
+    },
+    {
+      "address": "6R6WZh8MpKNY5kHSvabKEKSsUig8Hu83Xb3BDhQrcVs2",
+      "image": "uk.png"
+    },
+    {
+      "address": "D6dfYUK78iBnwzHXCeQZUJE99nDAcUGjXY28u7EHoxnM",
+      "image": "us.webp"
+    }
+  ]
+}
