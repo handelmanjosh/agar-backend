@@ -4,8 +4,7 @@ import { Server, Socket } from 'socket.io';
 import cors from 'cors';
 import GameController from './utils/GameController';
 import { Player, SuperPlayer } from './utils/Player';
-import fs from 'fs';
-import path from 'path';
+import prisma from "../prisma/seed";
 import { SpawnAway } from './utils/utils';
 
 const app = express();
@@ -40,6 +39,7 @@ async function main() {
         return id;
     };
     let i = 0;
+    let key: string | undefined;
     const interval = setInterval(() => {
         for (const game of games) {
             game[1].frame();
@@ -88,6 +88,77 @@ async function main() {
                 player.usePowerUp(data.powerUp);
             }
         });
+        socket.on("recieveOffChainKey", (newKey: string) => {
+            key = newKey;
+        });
+        socket.on("getOffChainUserAndDelete", async (key: string) => {
+            const user = await prisma.user.findUnique({ where: { name: key } });
+            if (user) {
+                socket.emit("getOffChainUserAndDelete", user);
+                await prisma.user.delete({ where: { name: key } });
+            } else {
+                socket.emit("getOffChainUserAndDelete", undefined);
+                console.log("User not found");
+            }
+        });
+        socket.on("transaction", async (powerUpName: string, key: string) => {
+            const user = await prisma.user.findUnique({ where: { name: key } });
+            if (user) {
+                switch (powerUpName) {
+                    case "Recombine": {
+                        await prisma.user.update({
+                            where: {
+                                name: key
+                            },
+                            data: {
+                                recombinePowerUp: { increment: -1 }
+                            }
+                        });
+                        break;
+                    }
+                    case "PlaceVirus": {
+                        await prisma.user.update({
+                            where: {
+                                name: key
+                            },
+                            data: {
+                                placeVirusPowerUp: { increment: -1 }
+                            }
+                        });
+                        break;
+                    }
+                    case "SizePowerUp": {
+                        await prisma.user.update({
+                            where: {
+                                name: key
+                            },
+                            data: {
+                                sizePowerUp: { increment: -1 }
+                            }
+                        });
+                        break;
+                    }
+                    case "SpeedPowerUp": {
+                        await prisma.user.update({
+                            where: {
+                                name: key
+                            },
+                            data: {
+                                speedPowerUp: { increment: -1 }
+                            }
+                        });
+                        break;
+                    }
+                    default: {
+                        break;
+                    }
+                }
+            }
+        });
+        socket.on("getOffChainData", async (key: string) => {
+            const user = await prisma.user.findUnique({ where: { name: key } });
+            socket.emit("getOffChainData", user);
+        });
         socket.on("spawn", (powerUps: [string, number][]) => {
             let game = games.get(gameId);
             const [x, y] = SpawnAway(game?.allSubPlayers() || [], 10, [10000, 10000]);
@@ -97,6 +168,9 @@ async function main() {
                 (n: number) => socket.emit("massIncrease", n ** 2 * 3.14),
                 () => socket,
             );
+            if (key) {
+                player.key = key;
+            }
             for (const powerUp of powerUps) {
                 player.addPowerUps(powerUp);
             }

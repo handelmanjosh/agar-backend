@@ -1,7 +1,7 @@
 import { Socket } from "socket.io";
 import PowerUp, { inventoryPowerUps, inventoryPowerUpsContructors } from "./PowerUp";
 import { array_distance, getRandomColor } from "./utils";
-
+import prisma from "../../prisma/seed";
 export class SuperPlayer {
     players: Player[];
     canSplit: boolean;
@@ -14,6 +14,7 @@ export class SuperPlayer {
     vMaxDelta: number;
     color: string;
     trophies: number;
+    key?: string;
     inventory: Map<string, PowerUp[]>;
     onCollect: (name: string) => any;
     sendEat: (n: number) => any;
@@ -38,9 +39,33 @@ export class SuperPlayer {
         this.trophies = 0;
         this.onCollect = onCollect;
         this.sendEat = sendEat;
-        this.kill = () => {
-            console.log(`Total radius: ${this.getTotalRadius()}`);
-            console.log(getSocket().id);
+        this.kill = async () => {
+            const radius = Math.floor(this.getTotalRadius());
+            if (this.key) {
+                const result = await prisma.user.upsert({
+                    where: {
+                        name: this.key
+                    },
+                    update: {
+                        trophies: { increment: Math.floor(this.trophies) },
+                        mass: { increment: radius },
+                        speedPowerUp: { increment: this.inventory.get("SpeedPowerUp")?.length || 0 },
+                        sizePowerUp: { increment: this.inventory.get("SizePowerUp")?.length || 0 },
+                        placeVirusPowerUp: { increment: this.inventory.get("PlaceVirus")?.length || 0 },
+                        recombinePowerUp: { increment: this.inventory.get("Recombine")?.length || 0 },
+                    },
+                    create: {
+                        name: this.key,
+                        trophies: Math.floor(this.trophies),
+                        mass: radius,
+                        speedPowerUp: this.inventory.get("SpeedPowerUp")?.length || 0,
+                        sizePowerUp: this.inventory.get("SizePowerUp")?.length || 0,
+                        placeVirusPowerUp: this.inventory.get("PlaceVirus")?.length || 0,
+                        recombinePowerUp: this.inventory.get("Recombine")?.length || 0,
+                    }
+                });
+                console.log(result);
+            }
             getSocket().emit("dead", { mass: this.getTotalRadius(), powerUps: this.serializeInventory(), trophies: Math.round(this.trophies) });
         };
     }
@@ -131,6 +156,9 @@ export class Player {
     y: number;
     vx: number;
     vy: number;
+    ax: number;
+    ay: number;
+    psuedofriction: number;
     vMax: number;
     radius: number;
     color: string;
@@ -147,11 +175,21 @@ export class Player {
         this.id = id;
         this.parent = parent;
         this.color = color;
+        this.ax = 0;
+        this.ay = 0;
+        this.psuedofriction = .1;
     }
     split(controller: SuperPlayer) {
+        const angle = Math.atan2(controller.vy, controller.vx);
+
         const newPlayer = new Player(this.x, this.y, this.vMax, this.id, this.parent.color, this.parent);
-        newPlayer.radius = this.radius / 2;
-        this.radius = this.radius / 2;
+        const mass = this.radius ** 2 * 3.14 / 2;
+        newPlayer.radius = Math.sqrt(mass) / 3.14;
+        newPlayer.ax = Math.cos(angle) * 2;
+        newPlayer.ay = Math.sin(angle) * 2;
+        this.radius = Math.sqrt(mass) / 3.14;
+        this.ax = -Math.cos(angle) * 2;
+        this.ay = -Math.sin(angle) * 2;
         controller.players.push(newPlayer);
     }
     eat(obj: { radius: number; }) {
@@ -174,8 +212,13 @@ export class Player {
         }, 10);
     }
     move() {
-        this.x += this.vx;
-        this.y += this.vy;
+        this.x += this.vx + this.ax;
+        this.y += this.vy + this.ay;
+        this.ax = this.ax < 0 ? this.ax + this.psuedofriction : this.ax - this.psuedofriction;
+        this.ay = this.ay < 0 ? this.ay + this.psuedofriction : this.ay - this.psuedofriction;
+        if (Math.abs(this.ay) < 0.5) this.ay = 0;
+        if (Math.abs(this.ax) < 0.5) this.ax = 0;
+
         if (this.x < 0) this.x = 0;
         if (this.y < 0) this.y = 0;
         if (this.x > 10000) this.x = 10000;
@@ -192,6 +235,7 @@ export class Player {
     }
 }
 
+const aiNames = ["Betsy", "Gertrude", "Bobby", "Donald", "Marcus Aurelius", "Bob", "Cathy", "Karen", "Destinee", "Shawn"];
 export class AIPlayer extends Player {
     target: [number, number] | undefined;
     constructor(x: number, y: number) {
