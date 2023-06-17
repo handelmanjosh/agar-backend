@@ -40,6 +40,7 @@ async function main() {
     };
     let i = 0;
     let key: string | undefined;
+    let username: string | undefined;
     const interval = setInterval(() => {
         for (const game of games) {
             game[1].frame();
@@ -155,6 +156,9 @@ async function main() {
                 }
             }
         });
+        socket.on("username", (newUsername: string) => {
+            username = newUsername;
+        });
         socket.on("getOffChainData", async (key: string) => {
             const user = await prisma.user.findUnique({ where: { name: key } });
             socket.emit("getOffChainData", user);
@@ -170,6 +174,9 @@ async function main() {
             );
             if (key) {
                 player.key = key;
+            }
+            if (username) {
+                player.setName(username);
             }
             for (const powerUp of powerUps) {
                 player.addPowerUps(powerUp);

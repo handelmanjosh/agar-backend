@@ -19,6 +19,7 @@ export class SuperPlayer {
     onCollect: (name: string) => any;
     sendEat: (n: number) => any;
     kill: () => any;
+    name?: string;
     constructor(x: number, y: number, vMax: number, id: string, onCollect: (name: string) => any, sendEat: (n: number) => any, getSocket: () => Socket) {
         //add ondeath event that sends a message to the client saying that the player died
         this.players = [];
@@ -69,6 +70,9 @@ export class SuperPlayer {
             getSocket().emit("dead", { mass: this.getTotalRadius(), powerUps: this.serializeInventory(), trophies: Math.round(this.trophies) });
         };
     }
+    setName(name: string) {
+        this.players.forEach((player: Player) => player.name = name);
+    }
     getTotalRadius() {
         //use 3.14 for simplicity
         return this.players.reduce((acc: number, current: Player) => acc + (current.radius ** 2 * 3.14), 0);
@@ -94,11 +98,14 @@ export class SuperPlayer {
     }
     split() {
         if (this.canSplit) {
+            const newPlayers: Player[] = [];
             for (const player of this.players) {
                 if (player.radius > 30) {
-                    player.split(this);
+                    const players = player.split(this);
+                    newPlayers.push(...players);
                 }
             }
+            this.players = newPlayers;
         }
     }
     move() {
@@ -165,6 +172,7 @@ export class Player {
     id: string;
     delete!: boolean;
     parent: SuperPlayer;
+    name?: string;
     constructor(x: number, y: number, vMax: number, id: string, color: string, parent: SuperPlayer) {
         this.x = x;
         this.y = y;
@@ -179,7 +187,7 @@ export class Player {
         this.ay = 0;
         this.psuedofriction = .1;
     }
-    split(controller: SuperPlayer) {
+    split(controller: SuperPlayer): [Player, Player] {
         const angle = Math.atan2(controller.vy, controller.vx);
 
         const newPlayer = new Player(this.x, this.y, this.vMax, this.id, this.parent.color, this.parent);
@@ -190,7 +198,8 @@ export class Player {
         this.radius = Math.sqrt(mass) / 3.14;
         this.ax = -Math.cos(angle) * 2;
         this.ay = -Math.sin(angle) * 2;
-        controller.players.push(newPlayer);
+
+        return [newPlayer, this];
     }
     eat(obj: { radius: number; }) {
         if (this.parent) {
@@ -230,17 +239,19 @@ export class Player {
             y: this.y,
             radius: this.radius,
             id: this.id,
-            color: this.color
+            color: this.color,
+            name: this.name,
         };
     }
 }
 
-const aiNames = ["Betsy", "Gertrude", "Bobby", "Donald", "Marcus Aurelius", "Bob", "Cathy", "Karen", "Destinee", "Shawn"];
+const aiNames = ["Betsy", "Gertrude", "Bobby", "Donald", "Marcus Aurelius", "Bob", "Cathy", "Karen", "Shawn", "Satoshi"];
 export class AIPlayer extends Player {
     target: [number, number] | undefined;
     constructor(x: number, y: number) {
         //@ts-ignore
         super(x, y, 10, undefined, getRandomColor(), undefined);
+        this.name = aiNames[Math.floor(Math.random() * aiNames.length)];
     }
     move() {
         if (this.target) {
